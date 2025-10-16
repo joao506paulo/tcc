@@ -1,5 +1,11 @@
 class Note {
   final String id;
   final String content;
-  Note({required this.id, required this.content});
+  final Map<String, dynamic> metadata;
+
+  Note({
+    required this.id,
+    required this.content,
+    required this.metadata,
+  });
 }
