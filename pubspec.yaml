@@ -1,0 +1,66 @@
+name: flutter_clean_tdd_app
+description: Aplicativo de edição de texto markdown com funcionalidades de web semântica
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  flutter_riverpod: ^2.4.9
+  
+  # Functional Programming
+  dartz: ^0.10.1
+  
+  # Value Equality
+  equatable: ^2.0.5
+  
+  # Service Locator
+  get_it: ^7.6.4
+  
+  # Local Storage
+  sqflite: ^2.3.0
+  path_provider: ^2.1.1
+  shared_preferences: ^2.2.2
+  
+  # File Handling
+  path: ^1.8.3
+  file_picker: ^6.1.1
+  
+  # Markdown Processing
+  markdown: ^7.1.1
+  
+  # JSON Serialization
+  json_annotation: ^4.8.1
+  
+  # Graph/Network Visualization (se necessário)
+  graphview: ^1.2.0
+  
+  # UI
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # Testing
+  mocktail: ^1.0.1
+  
+  # Linting
+  flutter_lints: ^3.0.1
+  
+  # Code Generation
+  build_runner: ^2.4.6
+  json_serializable: ^6.7.1
+
+flutter:
+  uses-material-design: true
+  
+  # Assets (adicione conforme necessário)
+  # assets:
+  #   - assets/images/
+  #   - assets/templates/
