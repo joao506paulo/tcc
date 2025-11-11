@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/injection/injection_container.dart' as di;
+import 'package:get_it/get_it.dart';
 import '../../domain/entities/note.dart';
 import '../../domain/entities/graph.dart';
 import '../../domain/usecases/read_markdown.dart';
@@ -10,14 +10,16 @@ import '../../domain/usecases/create_graph.dart';
 import '../../domain/usecases/create_template.dart';
 import '../../domain/repositories/note_repository.dart';
 
+final sl = GetIt.instance;
+
 // Use Cases Providers
-final readMarkdownProvider = Provider((ref) => di.sl<ReadMarkdown>());
-final generateMetadataProvider = Provider((ref) => di.sl<GenerateMetadata>());
-final storeDataProvider = Provider((ref) => di.sl<StoreData>());
-final linkInformationProvider = Provider((ref) => di.sl<LinkInformation>());
-final createGraphProvider = Provider((ref) => di.sl<CreateGraph>());
-final createTemplateProvider = Provider((ref) => di.sl<CreateTemplate>());
-final noteRepositoryProvider = Provider((ref) => di.sl<NoteRepository>());
+final readMarkdownProvider = Provider((ref) => sl<ReadMarkdown>());
+final generateMetadataProvider = Provider((ref) => sl<GenerateMetadata>());
+final storeDataProvider = Provider((ref) => sl<StoreData>());
+final linkInformationProvider = Provider((ref) => sl<LinkInformation>());
+final createGraphProvider = Provider((ref) => sl<CreateGraph>());
+final createTemplateProvider = Provider((ref) => sl<CreateTemplate>());
+final noteRepositoryProvider = Provider((ref) => sl<NoteRepository>());
 
 // State Providers
 final currentNoteProvider = StateProvider<Note?>((ref) => null);
