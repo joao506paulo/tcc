@@ -1,5 +1,3 @@
-// lib/core/injection/injection_container.dart
-
 import 'package:get_it/get_it.dart';
 import '../../features/notes/data/datasources/note_local_data_source.dart';
 import '../../features/notes/data/datasources/note_local_data_source_impl.dart';
@@ -15,7 +13,9 @@ import '../../features/notes/domain/usecases/create_template.dart';
 final sl = GetIt.instance;
 
 Future<void> init() async {
+  // ============================================
   // Use Cases
+  // ============================================
   sl.registerLazySingleton(() => ReadMarkdown(sl()));
   sl.registerLazySingleton(() => GenerateMetadata(sl()));
   sl.registerLazySingleton(() => StoreData(sl()));
@@ -23,12 +23,16 @@ Future<void> init() async {
   sl.registerLazySingleton(() => CreateGraph(sl()));
   sl.registerLazySingleton(() => CreateTemplate(sl()));
 
+  // ============================================
   // Repository
+  // ============================================
   sl.registerLazySingleton<NoteRepository>(
     () => NoteRepositoryImpl(sl()),
   );
 
+  // ============================================
   // Data Sources
+  // ============================================
   sl.registerLazySingleton<NoteLocalDataSource>(
     () => NoteLocalDataSourceImpl(),
   );
