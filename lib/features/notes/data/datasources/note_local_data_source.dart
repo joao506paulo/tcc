@@ -1,5 +1,6 @@
 import '../models/note_model.dart';
 import '../models/graph_model.dart';
+import 'package:flutter/foundation.dart';
 
 abstract class NoteLocalDataSource {
   /// Salva uma nota no storage local

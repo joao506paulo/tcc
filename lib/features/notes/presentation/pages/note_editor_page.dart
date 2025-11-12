@@ -8,7 +8,7 @@ import '../widgets/metadata_card.dart';
 class NoteEditorPage extends ConsumerStatefulWidget {
   final String? noteId;
 
-  const NoteEditorPage({Key? key, this.noteId}) : super(key: key);
+  const NoteEditorPage({super.key, this.noteId});
 
   @override
   ConsumerState<NoteEditorPage> createState() => _NoteEditorPageState();
@@ -93,32 +93,35 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
     }
   }
 
-  Future<bool> _onWillPop() async {
-    if (!_hasChanges) return true;
-
-    return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Descartar alterações?'),
-        content: const Text('Você tem alterações não salvas. Deseja descartá-las?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Descartar'),
-          ),
-        ],
-      ),
-    ) ?? false;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(  // CORRIGIDO: WillPopScope -> PopScope
+      canPop: !_hasChanges,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return;
+        
+        final shouldPop = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Descartar alterações?'),
+            content: const Text('Você tem alterações não salvas. Deseja descartá-las?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Descartar'),
+              ),
+            ],
+          ),
+        ) ?? false;
+        
+        if (shouldPop && context.mounted) {
+          Navigator.pop(context);
+        }
+      },
       child: Scaffold(
         appBar: AppBar(
           title: Text(_currentNote == null ? 'Nova Nota' : 'Editar Nota'),

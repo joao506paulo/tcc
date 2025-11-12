@@ -6,9 +6,17 @@ import 'package:flutter_clean_tdd_app/features/notes/domain/usecases/generate_me
 
 class MockNoteRepository extends Mock implements NoteRepository {}
 
+// ADICIONADO: Fake para Note
+class FakeNote extends Fake implements Note {}
+
 void main() {
   late GenerateMetadata usecase;
   late MockNoteRepository mockRepository;
+
+  // ADICIONADO: Registrar fallback value
+  setUpAll(() {
+    registerFallbackValue(FakeNote());
+  });
 
   setUp(() {
     mockRepository = MockNoteRepository();

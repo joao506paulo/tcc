@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/note_model.dart';
 import '../models/graph_model.dart';
 import 'note_local_data_source.dart';
@@ -14,6 +17,14 @@ class NoteLocalDataSourceImpl implements NoteLocalDataSource {
   
   Database? _database;
 
+  // Inicializar sqflite para desktop
+  static void initializeDatabaseFactory() {
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+  }
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
@@ -21,14 +32,28 @@ class NoteLocalDataSourceImpl implements NoteLocalDataSource {
   }
 
   Future<Database> _initDatabase() async {
-    final databasesPath = await getDatabasesPath();
-    final path = join(databasesPath, _databaseName);
+    try {
+      // Inicializar factory para desktop
+      initializeDatabaseFactory();
+      
+      // Usar path_provider para todos os sistemas
+      final directory = await getApplicationDocumentsDirectory();
+      final path = join(directory.path, _databaseName);
+      
+      print('📍 Caminho do banco: $path');
 
-    return await openDatabase(
-      path,
-      version: _databaseVersion,
-      onCreate: _onCreate,
-    );
+      return await openDatabase(
+        path,
+        version: _databaseVersion,
+        onCreate: _onCreate,
+        onOpen: (db) {
+          print('✅ Banco de dados aberto com sucesso');
+        },
+      );
+    } catch (e) {
+      print('❌ Erro ao inicializar banco: $e');
+      rethrow;
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -63,6 +88,7 @@ class NoteLocalDataSourceImpl implements NoteLocalDataSource {
   @override
   Future<bool> saveNote(NoteModel note) async {
     try {
+      print('💾 Tentando salvar nota: ${note.id}');
       final db = await database;
       final now = DateTime.now().toIso8601String();
       
@@ -70,15 +96,19 @@ class NoteLocalDataSourceImpl implements NoteLocalDataSource {
       noteMap['created_at'] = now;
       noteMap['updated_at'] = now;
       
-      await db.insert(
+      print('📝 Dados da nota: ${noteMap.keys}');
+      
+      final result = await db.insert(
         _notesTable,
         noteMap,
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
       
-      return true;
-    } catch (e) {
-      print('Error saving note: $e');
+      print('✅ Nota salva com ID de inserção: $result');
+      return result > 0 || result == note.id.hashCode;
+    } catch (e, stackTrace) {
+      print('❌ Erro ao salvar nota: $e');
+      print('Stack trace: $stackTrace');
       return false;
     }
   }
