@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/injection/injection_container.dart' as di;
-import 'features/notes/data/datasources/note_local_data_source_impl.dart';
 import 'features/notes/presentation/pages/home_page.dart';
+import 'features/notes/data/datasources/note_local_data_source_impl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Inicializar sqflite para desktop (Linux/Windows/macOS)
-  NoteLocalDataSourceImpl.initializeDatabaseFactory();
+  // 🔧 Inicializar SQLite FFI ANTES de tudo
+  NoteLocalDataSourceImpl.initializeFfi();
   
   // Inicializar injeção de dependências
   await di.init();
@@ -21,7 +21,7 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
           centerTitle: true,
           elevation: 0,
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(  // CORRIGIDO: CardTheme -> CardThemeData
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

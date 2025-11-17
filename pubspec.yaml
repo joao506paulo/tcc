@@ -22,9 +22,9 @@ dependencies:
   # Service Locator
   get_it: ^7.6.4
   
-  # Local Storage
+  # Local Storage - CORRIGIDO para desktop
   sqflite: ^2.3.0
-  sqflite_common_ffi: ^2.3.0  # Para Linux/Desktop
+  sqflite_common_ffi: ^2.3.0  # ADICIONADO para desktop (Linux/Windows/macOS)
   path_provider: ^2.1.1
   shared_preferences: ^2.2.2
   
@@ -38,7 +38,7 @@ dependencies:
   # JSON Serialization
   json_annotation: ^4.8.1
   
-  # Graph/Network Visualization (se necessário)
+  # Graph/Network Visualization
   graphview: ^1.2.0
   
   # UI
@@ -60,8 +60,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
-  # Assets (adicione conforme necessário)
-  # assets:
-  #   - assets/images/
-  #   - assets/templates/
