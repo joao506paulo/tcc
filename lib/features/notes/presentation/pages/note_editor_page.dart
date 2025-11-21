@@ -4,6 +4,7 @@ import '../../domain/entities/note.dart';
 import '../providers/note_providers.dart';
 import '../widgets/note_editor.dart';
 import '../widgets/metadata_card.dart';
+import '../../../semantic/presentation/widgets/note_annotation_widget.dart';
 
 class NoteEditorPage extends ConsumerStatefulWidget {
   final String? noteId;
@@ -20,6 +21,7 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
   bool _isLoading = false;
   bool _hasChanges = false;
   bool _showMetadata = true;
+  bool _showSemanticPanel = false;
 
   @override
   void initState() {
@@ -59,14 +61,11 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
     
     try {
       if (_currentNote == null) {
-        // Nova nota
         await controller.createNote(_content);
       } else {
-        // Atualizar nota existente
         await controller.updateNote(_currentNote!, _content);
       }
 
-      // Recarregar nota para obter metadados atualizados
       final noteState = ref.read(noteControllerProvider);
       noteState.whenData((note) {
         if (note != null) {
@@ -93,39 +92,48 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
     }
   }
 
+  Future<bool> _onWillPop() async {
+    if (!_hasChanges) return true;
+
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Descartar alterações?'),
+        content: const Text('Você tem alterações não salvas. Deseja descartá-las?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Descartar'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return PopScope(  // CORRIGIDO: WillPopScope -> PopScope
-      canPop: !_hasChanges,
-      onPopInvokedWithResult: (bool didPop, dynamic result) async {
-        if (didPop) return;
-        
-        final shouldPop = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Descartar alterações?'),
-            content: const Text('Você tem alterações não salvas. Deseja descartá-las?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancelar'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Descartar'),
-              ),
-            ],
-          ),
-        ) ?? false;
-        
-        if (shouldPop && context.mounted) {
-          Navigator.pop(context);
-        }
-      },
+    return WillPopScope(
+      onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
           title: Text(_currentNote == null ? 'Nova Nota' : 'Editar Nota'),
           actions: [
+            // Botão de anotação semântica
+            if (_currentNote != null)
+              IconButton(
+                icon: Icon(
+                  _showSemanticPanel ? Icons.label : Icons.label_outline,
+                  color: _showSemanticPanel ? Colors.purple : null,
+                ),
+                onPressed: () {
+                  setState(() => _showSemanticPanel = !_showSemanticPanel);
+                },
+                tooltip: 'Anotação Semântica',
+              ),
             IconButton(
               icon: Icon(_showMetadata ? Icons.visibility_off : Icons.visibility),
               onPressed: () {
@@ -142,41 +150,78 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
         ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : Row(
+            : _buildBody(),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    return Row(
+      children: [
+        // Editor principal
+        Expanded(
+          flex: 2,
+          child: NoteEditor(
+            initialContent: _content,
+            onChanged: (content) {
+              setState(() {
+                _content = content;
+                _hasChanges = true;
+              });
+            },
+          ),
+        ),
+        
+        // Painel lateral
+        if (_showMetadata || _showSemanticPanel)
+          Container(
+            width: 320,
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(color: Colors.grey[300]!),
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
                 children: [
-                  // Editor
-                  Expanded(
-                    flex: _showMetadata ? 2 : 1,
-                    child: NoteEditor(
-                      initialContent: _content,
-                      onChanged: (content) {
-                        setState(() {
-                          _content = content;
-                          _hasChanges = true;
-                        });
+                  // Anotação semântica
+                  if (_showSemanticPanel && _currentNote != null)
+                    NoteAnnotationWidget(
+                      noteId: _currentNote!.id,
+                      onAnnotationSaved: () {
+                        // Recarregar nota para atualizar metadados
+                        _loadNote();
                       },
                     ),
-                  ),
                   
-                  // Painel de metadados
+                  // Metadados tradicionais
                   if (_showMetadata && _currentNote != null)
-                    Container(
-                      width: 300,
-                      decoration: BoxDecoration(
-                        border: Border(
-                          left: BorderSide(color: Colors.grey[300]!),
-                        ),
-                      ),
-                      child: SingleChildScrollView(
-                        child: MetadataCard(
-                          note: _currentNote!,
-                          onRefresh: _saveNote,
-                        ),
+                    MetadataCard(
+                      note: _currentNote!,
+                      onRefresh: _saveNote,
+                    ),
+                  
+                  // Dica para salvar primeiro
+                  if (_currentNote == null)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Icon(Icons.info_outline, size: 48, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text(
+                            'Salve a nota primeiro para adicionar metadados e anotações semânticas',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
                       ),
                     ),
                 ],
               ),
-      ),
+            ),
+          ),
+      ],
     );
   }
 }

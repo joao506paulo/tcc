@@ -8,12 +8,14 @@ import 'features/semantic/data/datasources/semantic_local_data_source_impl.dart'
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 🔧 Inicializar SQLite FFI ANTES de tudo
+  // Inicializar SQLite FFI para desktop
   NoteLocalDataSourceImpl.initializeFfi();
-  SemanticLocalDataSourceImpl.initializeFfi(); 
-
+  SemanticLocalDataSourceImpl.initializeFfi();
+  
   // Inicializar injeção de dependências
   await di.init();
+  
+  print('✅ Aplicativo inicializado com sucesso!');
   
   runApp(
     const ProviderScope(
@@ -33,11 +35,15 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.light,
+        ),
         appBarTheme: const AppBarTheme(
           centerTitle: true,
           elevation: 0,
         ),
-        cardTheme: CardThemeData(  // CORRIGIDO: CardTheme -> CardThemeData
+        cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -49,6 +55,11 @@ class MyApp extends StatelessWidget {
           ),
           filled: true,
           fillColor: Colors.grey[50],
+        ),
+        chipTheme: ChipThemeData(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       ),
       home: const HomePage(),

@@ -1,114 +1,88 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:flutter_clean_tdd_app/features/semantic/domain/entities/ontology_class.dart';
-import 'package:flutter_clean_tdd_app/features/semantic/domain/entities/ontology_property.dart';
-import 'package:flutter_clean_tdd_app/features/semantic/domain/entities/semantic_template.dart';
-import 'package:flutter_clean_tdd_app/features/semantic/domain/entities/semantic_annotation.dart';
+import 'package:flutter_clean_tdd_app/features/semantic/domain/entities/ontology.dart';
 import 'package:flutter_clean_tdd_app/features/semantic/domain/repositories/semantic_repository.dart';
-import 'package:flutter_clean_tdd_app/features/semantic/domain/usecases/annotate_note.dart';
+import 'package:flutter_clean_tdd_app/features/semantic/domain/usecases/create_ontology.dart';
 
 class MockSemanticRepository extends Mock implements SemanticRepository {}
 
 void main() {
-  late AnnotateNote usecase;
+  late CreateOntology usecase;
   late MockSemanticRepository mockRepository;
 
   setUp(() {
     mockRepository = MockSemanticRepository();
-    usecase = AnnotateNote(mockRepository);
+    usecase = CreateOntology(mockRepository);
   });
 
-  // Template de teste
-  final tTemplate = SemanticTemplate(
-    id: 'template-aula',
-    name: 'Aula',
-    mainClass: OntologyClass(
-      uri: 'http://meuapp.com/ontology#Aula',
-      label: 'Aula',
-    ),
-    properties: [
-      OntologyProperty(
-        uri: 'http://meuapp.com/ontology#temData',
-        label: 'Data',
-        type: PropertyType.dataProperty,
-        domainUri: 'http://meuapp.com/ontology#Aula',
-        rangeUri: XsdDatatype.date,
-        isRequired: true,
-      ),
-      OntologyProperty(
-        uri: 'http://meuapp.com/ontology#temLocal',
-        label: 'Local',
-        type: PropertyType.dataProperty,
-        domainUri: 'http://meuapp.com/ontology#Aula',
-        rangeUri: XsdDatatype.string,
-        isRequired: false,
-      ),
-    ],
-    createdAt: DateTime.now(),
-  );
-
-  final tParams = AnnotateNoteParams(
-    noteId: 'note-123',
-    templateId: 'template-aula',
-    propertyValues: {
-      'http://meuapp.com/ontology#temData': '2025-11-20',
-      'http://meuapp.com/ontology#temLocal': 'Sala 101',
-    },
+  final tParams = CreateOntologyParams(
+    name: 'Minha Ontologia',
+    description: 'Ontologia para aulas e eventos',
   );
 
   setUpAll(() {
-    registerFallbackValue(SemanticAnnotation(
+    registerFallbackValue(Ontology(
       id: 'test',
-      noteId: 'test',
-      templateId: 'test',
-      classUri: 'http://test.com#Test',
+      baseUri: 'http://test.com#',
+      name: 'Test',
       createdAt: DateTime.now(),
-    ));
-    registerFallbackValue(RdfTriple(
-      subject: 'http://test.com#s',
-      predicate: 'http://test.com#p',
-      object: 'test',
     ));
   });
 
-  test('deve criar anotação semântica com sucesso', () async {
-    when(() => mockRepository.getTemplate(any()))
-        .thenAnswer((_) async => tTemplate);
-    when(() => mockRepository.getAnnotationByNoteId(any()))
-        .thenAnswer((_) async => null);
-    when(() => mockRepository.saveAnnotation(any()))
-        .thenAnswer((_) async => true);
-    when(() => mockRepository.addTriple(any()))
+  test('deve criar uma ontologia com sucesso', () async {
+    when(() => mockRepository.saveOntology(any()))
         .thenAnswer((_) async => true);
 
     final result = await usecase(tParams);
 
-    expect(result.noteId, equals('note-123'));
-    expect(result.templateId, equals('template-aula'));
-    expect(result.classUri, equals('http://meuapp.com/ontology#Aula'));
-    expect(result.propertyValues.length, equals(2));
-    verify(() => mockRepository.saveAnnotation(any())).called(1);
+    expect(result.name, equals('Minha Ontologia'));
+    expect(result.description, equals('Ontologia para aulas e eventos'));
+    expect(result.baseUri, contains('minha-ontologia'));
+    expect(result.id, isNotEmpty);
+    expect(result.createdAt, isNotNull);
+    verify(() => mockRepository.saveOntology(any())).called(1);
   });
 
-  test('deve gerar triplas RDF ao anotar', () async {
-    when(() => mockRepository.getTemplate(any()))
-        .thenAnswer((_) async => tTemplate);
-    when(() => mockRepository.getAnnotationByNoteId(any()))
-        .thenAnswer((_) async => null);
-    when(() => mockRepository.saveAnnotation(any()))
-        .thenAnswer((_) async => true);
-    when(() => mockRepository.addTriple(any()))
+  test('deve gerar URI base automaticamente a partir do nome', () async {
+    when(() => mockRepository.saveOntology(any()))
         .thenAnswer((_) async => true);
 
-    await usecase(tParams);
+    final params = CreateOntologyParams(name: 'Aulas e Eventos');
+    final result = await usecase(params);
 
-    // Deve adicionar triplas: 1 tipo + 2 propriedades = 3 triplas
-    verify(() => mockRepository.addTriple(any())).called(3);
+    expect(result.baseUri, contains('aulas-e-eventos'));
+    expect(result.baseUri, startsWith('http://'));
+    expect(result.baseUri, endsWith('#'));
   });
 
-  test('deve lançar exceção quando template não existe', () async {
-    when(() => mockRepository.getTemplate(any()))
-        .thenAnswer((_) async => null);
+  test('deve usar URI base fornecido', () async {
+    when(() => mockRepository.saveOntology(any()))
+        .thenAnswer((_) async => true);
+
+    final params = CreateOntologyParams(
+      name: 'Test',
+      baseUri: 'http://custom.com/ontology#',
+    );
+    final result = await usecase(params);
+
+    expect(result.baseUri, equals('http://custom.com/ontology#'));
+  });
+
+  test('deve normalizar caracteres especiais no URI', () async {
+    when(() => mockRepository.saveOntology(any()))
+        .thenAnswer((_) async => true);
+
+    final params = CreateOntologyParams(name: 'Ação & Reação');
+    final result = await usecase(params);
+
+    expect(result.baseUri, contains('acao-reacao'));
+    expect(result.baseUri, isNot(contains('&')));
+    expect(result.baseUri, isNot(contains('ç')));
+  });
+
+  test('deve lançar exceção quando salvar falha', () async {
+    when(() => mockRepository.saveOntology(any()))
+        .thenAnswer((_) async => false);
 
     expect(
       () => usecase(tParams),
@@ -116,81 +90,23 @@ void main() {
     );
   });
 
-  test('deve lançar ValidationException quando propriedade obrigatória falta', () async {
-    when(() => mockRepository.getTemplate(any()))
-        .thenAnswer((_) async => tTemplate);
-
-    final paramsWithoutRequired = AnnotateNoteParams(
-      noteId: 'note-123',
-      templateId: 'template-aula',
-      propertyValues: {
-        // Faltando 'temData' que é obrigatório
-        'http://meuapp.com/ontology#temLocal': 'Sala 101',
-      },
-    );
-
-    expect(
-      () => usecase(paramsWithoutRequired),
-      throwsA(isA<ValidationException>()),
-    );
-  });
-
-  test('deve atualizar anotação existente', () async {
-    final existingAnnotation = SemanticAnnotation(
-      id: 'existing-1',
-      noteId: 'note-123',
-      templateId: 'template-aula',
-      classUri: 'http://meuapp.com/ontology#Aula',
-      propertyValues: {'old': 'value'},
-      createdAt: DateTime(2025, 1, 1),
-    );
-
-    when(() => mockRepository.getTemplate(any()))
-        .thenAnswer((_) async => tTemplate);
-    when(() => mockRepository.getAnnotationByNoteId(any()))
-        .thenAnswer((_) async => existingAnnotation);
-    when(() => mockRepository.saveAnnotation(any()))
-        .thenAnswer((_) async => true);
-    when(() => mockRepository.removeTriplesForNote(any()))
-        .thenAnswer((_) async => true);
-    when(() => mockRepository.addTriple(any()))
+  test('deve definir versão padrão como 1.0.0', () async {
+    when(() => mockRepository.saveOntology(any()))
         .thenAnswer((_) async => true);
 
     final result = await usecase(tParams);
 
-    expect(result.id, equals('existing-1')); // Mantém ID original
-    expect(result.updatedAt, isNotNull);
-    verify(() => mockRepository.removeTriplesForNote('note-123')).called(1);
+    expect(result.version, equals('1.0.0'));
   });
 
-  test('deve incluir relações na anotação', () async {
-    when(() => mockRepository.getTemplate(any()))
-        .thenAnswer((_) async => tTemplate);
-    when(() => mockRepository.getAnnotationByNoteId(any()))
-        .thenAnswer((_) async => null);
-    when(() => mockRepository.saveAnnotation(any()))
-        .thenAnswer((_) async => true);
-    when(() => mockRepository.addTriple(any()))
+  test('deve inicializar com listas vazias', () async {
+    when(() => mockRepository.saveOntology(any()))
         .thenAnswer((_) async => true);
 
-    final paramsWithRelations = AnnotateNoteParams(
-      noteId: 'note-123',
-      templateId: 'template-aula',
-      propertyValues: {
-        'http://meuapp.com/ontology#temData': '2025-11-20',
-      },
-      relations: [
-        NoteRelation(
-          propertyUri: 'http://meuapp.com/ontology#temProfessor',
-          targetNoteId: 'note-prof-1',
-        ),
-      ],
-    );
+    final result = await usecase(tParams);
 
-    final result = await usecase(paramsWithRelations);
-
-    expect(result.relations.length, equals(1));
-    // 1 tipo + 1 propriedade + 1 relação = 3 triplas
-    verify(() => mockRepository.addTriple(any())).called(3);
+    expect(result.classes, isEmpty);
+    expect(result.properties, isEmpty);
+    expect(result.imports, isEmpty);
   });
 }

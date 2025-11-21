@@ -5,9 +5,12 @@ import '../providers/note_providers.dart';
 import 'note_editor_page.dart';
 import 'graph_view_page.dart';
 import 'templates_page.dart';
+import '../../../semantic/presentation/pages/semantic_templates_page.dart';
+import '../../../semantic/presentation/pages/ontology_list_page.dart';
+import '../../../semantic/presentation/providers/semantic_providers.dart';
 
 class HomePage extends ConsumerWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -17,26 +20,78 @@ class HomePage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Minhas Notas'),
         actions: [
+          // Menu de Web Semântica
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.schema),
+            tooltip: 'Web Semântica',
+            onSelected: (value) {
+              switch (value) {
+                case 'ontologies':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const OntologyListPage()),
+                  );
+                  break;
+                case 'semantic_templates':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SemanticTemplatesPage()),
+                  );
+                  break;
+                case 'sparql':
+                  _showSparqlDialog(context, ref);
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'ontologies',
+                child: Row(
+                  children: [
+                    Icon(Icons.schema, color: Colors.purple),
+                    SizedBox(width: 8),
+                    Text('Ontologias'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'semantic_templates',
+                child: Row(
+                  children: [
+                    Icon(Icons.article, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text('Templates Semânticos'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'sparql',
+                child: Row(
+                  children: [
+                    Icon(Icons.search, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text('Consulta SPARQL'),
+                  ],
+                ),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.account_tree),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const GraphViewPage(),
-                ),
+                MaterialPageRoute(builder: (context) => const GraphViewPage()),
               );
             },
             tooltip: 'Ver Grafo',
           ),
           IconButton(
-            icon: const Icon(Icons.temple_buddhist),
+            icon: const Icon(Icons.description),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const TemplatesPage(),
-                ),
+                MaterialPageRoute(builder: (context) => const TemplatesPage()),
               );
             },
             tooltip: 'Templates',
@@ -66,16 +121,11 @@ class HomePage extends ConsumerWidget {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const NoteEditorPage(),
-            ),
-          ).then((_) {
-            // Atualizar lista após retornar
-            ref.refresh(notesListProvider);
-          });
+            MaterialPageRoute(builder: (context) => const NoteEditorPage()),
+          ).then((_) => ref.refresh(notesListProvider));
         },
-        child: const Icon(Icons.add),
         tooltip: 'Nova Nota',
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -97,6 +147,17 @@ class HomePage extends ConsumerWidget {
               'Toque no botão + para criar sua primeira nota',
               style: TextStyle(color: Colors.grey[500]),
             ),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const OntologyListPage()),
+                );
+              },
+              icon: const Icon(Icons.schema),
+              label: const Text('Configurar Web Semântica'),
+            ),
           ],
         ),
       );
@@ -111,17 +172,136 @@ class HomePage extends ConsumerWidget {
         padding: const EdgeInsets.all(8),
         itemBuilder: (context, index) {
           final note = notes[index];
-          return _buildNoteCard(context, ref, note);
+          return _NoteCard(note: note);
         },
       ),
     );
   }
 
-  Widget _buildNoteCard(BuildContext context, WidgetRef ref, Note note) {
+  void _showSparqlDialog(BuildContext context, WidgetRef ref) {
+    final queryController = TextEditingController(
+      text: 'SELECT ?s ?p ?o WHERE { ?s ?p ?o }',
+    );
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Consulta SPARQL'),
+        content: SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Digite uma consulta SPARQL simplificada:',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: queryController,
+                maxLines: 5,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'SELECT ?s ?p ?o WHERE { ?s ?p ?o }',
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Exemplos:\n'
+                '• SELECT ?s ?p ?o WHERE { ?s ?p ?o }\n'
+                '• SELECT ?s WHERE { ?s rdf:type :Aula }',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              _executeSparql(context, ref, queryController.text);
+            },
+            child: const Text('Executar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _executeSparql(BuildContext context, WidgetRef ref, String query) async {
+    final repository = ref.read(semanticRepositoryProvider);
+    
+    try {
+      final results = await repository.executeSparqlSelect(query);
+      
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Resultados (${results.length})'),
+            content: SizedBox(
+              width: 500,
+              height: 400,
+              child: results.isEmpty
+                  ? const Center(child: Text('Nenhum resultado encontrado'))
+                  : ListView.builder(
+                      itemCount: results.length,
+                      itemBuilder: (context, index) {
+                        final result = results[index];
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: result.entries.map((e) => Text(
+                                '${e.key}: ${e.value}',
+                                style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                              )).toList(),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Fechar'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro: $e')),
+        );
+      }
+    }
+  }
+}
+
+class _NoteCard extends ConsumerWidget {
+  final Note note;
+
+  const _NoteCard({required this.note});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final title = note.metadata['title'] as String? ?? 'Sem título';
     final tags = note.metadata['tags'] as List? ?? [];
     final wordCount = note.metadata['word_count'] ?? 0;
     final createdAt = note.metadata['created_at'] as String?;
+
+    // Verificar se tem anotação semântica
+    final annotationAsync = ref.watch(annotationByNoteProvider(note.id));
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -132,9 +312,7 @@ class HomePage extends ConsumerWidget {
             MaterialPageRoute(
               builder: (context) => NoteEditorPage(noteId: note.id),
             ),
-          ).then((_) {
-            ref.refresh(notesListProvider);
-          });
+          ).then((_) => ref.refresh(notesListProvider));
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -143,6 +321,30 @@ class HomePage extends ConsumerWidget {
             children: [
               Row(
                 children: [
+                  // Indicador de anotação semântica
+                  annotationAsync.when(
+                    data: (annotation) {
+                      if (annotation != null) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Tooltip(
+                            message: 'Tipo: ${annotation.classUri.split('#').last}',
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.purple[100],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Icon(Icons.label, size: 16, color: Colors.purple[700]),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
                   Expanded(
                     child: Text(
                       title,
@@ -174,18 +376,13 @@ class HomePage extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              
-              // Preview do conteúdo
               Text(
                 note.content,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: Colors.grey[700]),
               ),
-              
               const SizedBox(height: 12),
-              
-              // Tags
               if (tags.isNotEmpty)
                 Wrap(
                   spacing: 8,
@@ -194,18 +391,12 @@ class HomePage extends ConsumerWidget {
                     return Chip(
                       label: Text('#$tag'),
                       backgroundColor: Colors.blue[100],
-                      labelStyle: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue,
-                      ),
+                      labelStyle: const TextStyle(fontSize: 12, color: Colors.blue),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     );
                   }).toList(),
                 ),
-              
               const SizedBox(height: 8),
-              
-              // Informações adicionais
               Row(
                 children: [
                   Icon(Icons.text_fields, size: 16, color: Colors.grey[600]),
