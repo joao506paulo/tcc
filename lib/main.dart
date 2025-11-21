@@ -3,13 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/injection/injection_container.dart' as di;
 import 'features/notes/presentation/pages/home_page.dart';
 import 'features/notes/data/datasources/note_local_data_source_impl.dart';
+import 'features/semantic/data/datasources/semantic_local_data_source_impl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // 🔧 Inicializar SQLite FFI ANTES de tudo
   NoteLocalDataSourceImpl.initializeFfi();
-  
+  SemanticLocalDataSourceImpl.initializeFfi(); 
+
   // Inicializar injeção de dependências
   await di.init();
   
